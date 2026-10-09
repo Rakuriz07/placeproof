@@ -4,13 +4,13 @@ import '../theme/app_theme.dart';
 class FilterPillItem {
   final String id;
   final String label;
-  final Color? dotColor;
+  final Color? activeBorderColor;
   final IconData? icon;
 
   const FilterPillItem({
     required this.id,
     required this.label,
-    this.dotColor,
+    this.activeBorderColor,
     this.icon,
   });
 }
@@ -26,36 +26,43 @@ class QuickFilterPills extends StatelessWidget {
   });
 
   static const List<FilterPillItem> defaultFilters = [
-    FilterPillItem(id: 'all', label: 'Semua Kunjungan'),
+    FilterPillItem(
+      id: 'all',
+      label: 'Semua Kunjungan',
+      activeBorderColor: AppColors.darkButton,
+    ),
     FilterPillItem(
       id: 'rekomendasi',
       label: 'Recomended',
-      dotColor: AppColors.blueDot,
+      activeBorderColor: AppColors.blueDot,
     ),
     FilterPillItem(
       id: 'wishlist_selesai',
       label: 'Wishlist',
-      dotColor: AppColors.pinkDot,
+      activeBorderColor: AppColors.pinkDot,
     ),
     FilterPillItem(
       id: 'tidak',
       label: 'Tidak Rekomendasi',
-      dotColor: AppColors.orangeDot,
+      activeBorderColor: AppColors.orangeDot,
     ),
     FilterPillItem(
       id: 'visited',
       label: 'Kunjungan Saya',
       icon: Icons.history_edu_rounded,
+      activeBorderColor: AppColors.primaryAccent,
     ),
     FilterPillItem(
       id: 'wishlist',
       label: 'Tersimpan',
       icon: Icons.bookmark_border_rounded,
+      activeBorderColor: AppColors.pinkDot,
     ),
     FilterPillItem(
       id: 'sound',
       label: '< 50 dB Tenang',
       icon: Icons.volume_down_rounded,
+      activeBorderColor: AppColors.greenDot,
     ),
   ];
 
@@ -71,6 +78,7 @@ class QuickFilterPills extends StatelessWidget {
         itemBuilder: (context, index) {
           final filter = defaultFilters[index];
           final isSelected = filter.id == selectedFilterId;
+          final activeBorder = filter.activeBorderColor ?? AppColors.darkButton;
 
           return InkWell(
             onTap: () => onFilterSelected(filter.id),
@@ -78,20 +86,20 @@ class QuickFilterPills extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeInOut,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.darkButton : Colors.white,
                 borderRadius: BorderRadius.circular(19),
                 border: Border.all(
-                  color: isSelected ? AppColors.darkButton : const Color(0xFFE5DFDC),
-                  width: 1,
+                  color: isSelected ? activeBorder : const Color(0xFFE5DFDC),
+                  width: isSelected ? 1.5 : 1,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: AppColors.darkButton.withValues(alpha: 0.22),
+                          color: activeBorder.withValues(alpha: 0.35),
                           blurRadius: 8,
-                          offset: const Offset(0, 2.5),
+                          offset: const Offset(0, 2),
                         ),
                       ]
                     : [
@@ -105,25 +113,7 @@ class QuickFilterPills extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (filter.dotColor != null) ...[
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: filter.dotColor,
-                        shape: BoxShape.circle,
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: filter.dotColor!.withValues(alpha: 0.6),
-                                  blurRadius: 4,
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ] else if (filter.icon != null) ...[
+                  if (filter.icon != null) ...[
                     Icon(
                       filter.icon,
                       size: 14,
