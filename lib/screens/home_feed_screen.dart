@@ -43,20 +43,25 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         }
       }
 
-      // 2. Pill Filter
+      // 2. Navigation / Pill Filter
+      if (_currentNavIndex == 1) {
+        return card.status == AuditStatus.wishlistSetelahKunjungan ||
+            card.isBookmarked;
+      }
+
       switch (_selectedFilterId) {
         case 'rekomendasi':
         case 'wajib':
           return card.status == AuditStatus.rekomendasiKunjungiLagi;
         case 'wishlist_selesai':
         case 'pikir':
-          return card.status == AuditStatus.wishlistSetelahKunjungan;
+        case 'wishlist':
+          return card.status == AuditStatus.wishlistSetelahKunjungan ||
+              card.isBookmarked;
         case 'tidak':
           return card.status == AuditStatus.tidakRekomendasi;
         case 'visited':
           return card.isVisitedByMe;
-        case 'wishlist':
-          return card.isBookmarked;
         case 'sound':
           return card.decibel <= 50;
         case 'all':
@@ -731,6 +736,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               onFilterSelected: (id) {
                 setState(() {
                   _selectedFilterId = id;
+                  if (id == 'wishlist_selesai' || id == 'wishlist') {
+                    _currentNavIndex = 1; // Otomatis masuk ke navigation wishlist
+                  } else {
+                    _currentNavIndex = 0; // Kembali ke navigation Home jika filter lain
+                  }
                 });
               },
             ),

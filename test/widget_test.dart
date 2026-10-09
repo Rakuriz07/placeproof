@@ -127,5 +127,19 @@ void main() {
     await tester.drag(verticalFeed, const Offset(0, -600));
     await tester.pumpAndSettle();
     expect(find.text('Roastery Blok Timur'), findsOneWidget);
+
+    // Scroll back up
+    await tester.drag(verticalFeed, const Offset(0, 600));
+    await tester.pumpAndSettle();
+
+    // Tap Wishlist pill
+    final wishlistPill = find.widgetWithText(InkWell, 'Wishlist').first;
+    await tester.ensureVisible(wishlistPill);
+    await tester.pumpAndSettle();
+    await tester.tap(wishlistPill, warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    // Verify Wishlist places are displayed
+    expect(find.text('Roastery Blok Timur'), findsOneWidget);
   });
 }
