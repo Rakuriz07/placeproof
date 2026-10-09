@@ -4,13 +4,13 @@ import '../theme/app_theme.dart';
 class FilterPillItem {
   final String id;
   final String label;
-  final Color? activeBorderColor;
+  final Color? activeColor;
   final IconData? icon;
 
   const FilterPillItem({
     required this.id,
     required this.label,
-    this.activeBorderColor,
+    this.activeColor,
     this.icon,
   });
 }
@@ -29,40 +29,40 @@ class QuickFilterPills extends StatelessWidget {
     FilterPillItem(
       id: 'all',
       label: 'Semua Kunjungan',
-      activeBorderColor: AppColors.darkButton,
+      activeColor: AppColors.darkButton,
     ),
     FilterPillItem(
       id: 'rekomendasi',
       label: 'Recomended',
-      activeBorderColor: AppColors.blueDot,
+      activeColor: AppColors.blueDot,
     ),
     FilterPillItem(
       id: 'wishlist_selesai',
       label: 'Wishlist',
-      activeBorderColor: AppColors.pinkDot,
+      activeColor: AppColors.pinkDot,
     ),
     FilterPillItem(
       id: 'tidak',
       label: 'Tidak Rekomendasi',
-      activeBorderColor: AppColors.orangeDot,
+      activeColor: AppColors.orangeDot,
     ),
     FilterPillItem(
       id: 'visited',
       label: 'Kunjungan Saya',
       icon: Icons.history_edu_rounded,
-      activeBorderColor: AppColors.primaryAccent,
+      activeColor: AppColors.primaryAccent,
     ),
     FilterPillItem(
       id: 'wishlist',
       label: 'Tersimpan',
       icon: Icons.bookmark_border_rounded,
-      activeBorderColor: AppColors.pinkDot,
+      activeColor: AppColors.pinkDot,
     ),
     FilterPillItem(
       id: 'sound',
       label: '< 50 dB Tenang',
       icon: Icons.volume_down_rounded,
-      activeBorderColor: AppColors.greenDot,
+      activeColor: AppColors.blueDot,
     ),
   ];
 
@@ -78,7 +78,7 @@ class QuickFilterPills extends StatelessWidget {
         itemBuilder: (context, index) {
           final filter = defaultFilters[index];
           final isSelected = filter.id == selectedFilterId;
-          final activeBorder = filter.activeBorderColor ?? AppColors.darkButton;
+          final activeColor = filter.activeColor ?? AppColors.darkButton;
 
           return InkWell(
             onTap: () => onFilterSelected(filter.id),
@@ -88,18 +88,18 @@ class QuickFilterPills extends StatelessWidget {
               curve: Curves.easeInOut,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.darkButton : Colors.white,
+                color: isSelected ? activeColor : Colors.white,
                 borderRadius: BorderRadius.circular(19),
                 border: Border.all(
-                  color: isSelected ? activeBorder : const Color(0xFFE5DFDC),
-                  width: isSelected ? 1.5 : 1,
+                  color: isSelected ? activeColor : const Color(0xFFE5DFDC),
+                  width: 1,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: activeBorder.withValues(alpha: 0.35),
+                          color: activeColor.withValues(alpha: 0.38),
                           blurRadius: 8,
-                          offset: const Offset(0, 2),
+                          offset: const Offset(0, 2.5),
                         ),
                       ]
                     : [
