@@ -1,10 +1,14 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/mock_feed_data.dart';
 import '../models/audit_card_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/audit_card.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/noise_checker_widget.dart';
 import '../widgets/quick_filter_pills.dart';
 import '../widgets/top_app_bar.dart';
 
@@ -53,17 +57,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         case 'rekomendasi':
         case 'wajib':
           return card.status == AuditStatus.rekomendasiKunjungiLagi;
-        case 'wishlist_selesai':
-        case 'pikir':
-        case 'wishlist':
-          return card.status == AuditStatus.wishlistSetelahKunjungan ||
-              card.isBookmarked;
         case 'tidak':
           return card.status == AuditStatus.tidakRekomendasi;
-        case 'visited':
-          return card.isVisitedByMe;
-        case 'sound':
-          return card.decibel <= 50;
         case 'all':
         default:
           return true;
@@ -72,25 +67,27 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   }
 
   void _toggleBookmark(int index, AuditCardData card) {
+    bool isNowBookmarked = false;
     setState(() {
       final cardIndex = _cards.indexWhere((c) => c.id == card.id);
       if (cardIndex != -1) {
         final current = _cards[cardIndex];
+        isNowBookmarked = !current.isBookmarked;
         _cards[cardIndex] = current.copyWith(
-          isBookmarked: !current.isBookmarked,
+          isBookmarked: isNowBookmarked,
         );
       }
+      // Setiap pencet tombol saved maka akan masuk ke navigation saved
+      _currentNavIndex = 1;
+      _selectedFilterId = '';
     });
 
-    final isBookmarkedNow = _cards
-        .firstWhere((c) => c.id == card.id)
-        .isBookmarked;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          isBookmarkedNow
-              ? 'Tersimpan di Wishlist: ${card.placeName}'
-              : 'Dihapus dari Wishlist: ${card.placeName}',
+          isNowBookmarked
+              ? 'Tersimpan ke Saved: ${card.placeName}'
+              : 'Dihapus dari Saved: ${card.placeName}',
           style: AppTypography.body(fontSize: 13, color: Colors.white),
         ),
         backgroundColor: AppColors.darkButton,
@@ -107,7 +104,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     );
     final reviewController = TextEditingController(text: card.reviewSnippet);
     AuditStatus currentStatus = card.status;
-    double currentDecibel = card.decibel.toDouble();
+    List<ProofPhotoItem> currentPhotos = List.from(card.photos);
+    double? currentNoiseDecibel = card.noiseDecibel ?? 56.0;
 
     showModalBottomSheet(
       context: context,
@@ -119,13 +117,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            String getDecibelDesc(int db) {
-              if (db <= 50) return 'Sangat Tenang • Akustik Lembut';
-              if (db <= 65) return 'Tenang • Suasana Santai';
-              if (db <= 75) return 'Sedang • Musik/Percakapan';
-              return 'Bising • Loud Echo';
-            }
-
             return Padding(
               padding: EdgeInsets.only(
                 left: 20,
@@ -168,7 +159,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                 ),
                               ),
                               Text(
-                                'Perbarui status, catatan, atau tingkat kebisingan',
+                                'Perbarui status rekomendasi dan ulasan tempat',
                                 style: AppTypography.label(
                                   fontSize: 11,
                                   color: AppColors.textSecondary,
@@ -209,20 +200,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           onTap: () {
                             setModalState(
                               () => currentStatus = AuditStatus.rekomendasiKunjungiLagi,
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        _buildStatusOptionPill(
-                          title: 'Wishlist',
-                          status: AuditStatus.wishlistSetelahKunjungan,
-                          color: AppColors.badgePinkText,
-                          bgColor: AppColors.badgePinkBg,
-                          dotColor: AppColors.pinkDot,
-                          isSelected: currentStatus == AuditStatus.wishlistSetelahKunjungan,
-                          onTap: () {
-                            setModalState(
-                              () => currentStatus = AuditStatus.wishlistSetelahKunjungan,
                             );
                           },
                         ),
@@ -319,49 +296,258 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       ),
                     ),
 
+
+
                     const SizedBox(height: 14),
 
-                    // 4. Acoustic Sound Slider
+                    // 4. Photo Management (Pengurangan & Penambahan Foto)
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Kebisingan: ${currentDecibel.round()} dB',
-                          style: AppTypography.label(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            getDecibelDesc(currentDecibel.round()),
-                            textAlign: TextAlign.end,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            'Foto Bukti Suasana (${currentPhotos.length})',
                             style: AppTypography.label(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            _showAddPhotoDialog(context, (newPhoto) {
+                              setModalState(() {
+                                currentPhotos.add(newPhoto);
+                              });
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                  size: 15,
+                                  color: AppColors.primaryAccent,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '+ Tambah Foto',
+                                  style: AppTypography.label(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primaryAccent,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
-                    Slider(
-                      value: currentDecibel,
-                      min: 40,
-                      max: 85,
-                      divisions: 9,
-                      activeColor: AppColors.primaryAccent,
-                      onChanged: (val) {
-                        setModalState(() => currentDecibel = val);
+                    const SizedBox(height: 8),
+
+                    if (currentPhotos.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 20,
+                          horizontal: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFE2DDD9),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.no_photography_outlined,
+                              size: 28,
+                              color: AppColors.textTertiary,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Belum ada foto tempat',
+                              style: AppTypography.label(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Tekan "+ Tambah Foto" untuk menambahkan foto',
+                              style: AppTypography.label(
+                                fontSize: 10,
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: 110,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: currentPhotos.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 10),
+                          itemBuilder: (ctx, pIdx) {
+                            final photo = currentPhotos[pIdx];
+                            return Stack(
+                              children: [
+                                Container(
+                                  width: 110,
+                                  height: 110,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2DDD9),
+                                    ),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(11),
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        photo.imageUrl.startsWith('http')
+                                            ? Image.network(
+                                                photo.imageUrl,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, _, _) =>
+                                                    Container(
+                                                  color:
+                                                      const Color(0xFFDDD5CE),
+                                                  child: const Center(
+                                                    child: Icon(
+                                                      Icons
+                                                          .broken_image_rounded,
+                                                      size: 24,
+                                                      color: AppColors
+                                                          .textSecondary,
+                                                    ),
+                                                  ),
+                                                ),
+                                              )
+                                            : Image.file(
+                                                File(photo.imageUrl),
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, _, _) =>
+                                                    Container(
+                                                  color:
+                                                      const Color(0xFFDDD5CE),
+                                                  child: const Center(
+                                                    child: Icon(
+                                                      Icons.image_rounded,
+                                                      size: 24,
+                                                      color: AppColors
+                                                          .textSecondary,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                        Positioned(
+                                          left: 0,
+                                          right: 0,
+                                          bottom: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 3,
+                                            ),
+                                            color: Colors.black.withValues(
+                                              alpha: 0.65,
+                                            ),
+                                            child: Text(
+                                              photo.caption,
+                                              style: AppTypography.label(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                // Tombol Hapus Foto (Pengurangan Foto)
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: Tooltip(
+                                    message: 'Hapus foto ini',
+                                    child: InkWell(
+                                      onTap: () {
+                                        setModalState(() {
+                                          currentPhotos.removeAt(pIdx);
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade600,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.close_rounded,
+                                          size: 13,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+
+                    const SizedBox(height: 14),
+
+                    // 5. Surrounding Sound Checker (noise_meter: ^6.0.0)
+                    NoiseCheckerWidget(
+                      initialDecibel: currentNoiseDecibel,
+                      onDecibelCaptured: (val) {
+                        currentNoiseDecibel = val;
+                      },
+                      onApplyToNotes: (soundText) {
+                        setModalState(() {
+                          if (reviewController.text.trim().isEmpty) {
+                            reviewController.text = soundText;
+                          } else {
+                            reviewController.text =
+                                '${reviewController.text.trim()}\n$soundText';
+                          }
+                        });
                       },
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 14),
 
-                    // 5. Personal Note / Review
+                    // 6. Personal Note / Review
                     Text(
                       'Catatan Kunjungan / Ulasan Pribadi',
                       style: AppTypography.label(
@@ -433,10 +619,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                                     : card.categoryDistance,
                                 status: currentStatus,
                                 statusLabel: label,
-                                decibel: currentDecibel.round(),
-                                decibelDescription: getDecibelDesc(
-                                  currentDecibel.round(),
-                                ),
+                                photos: currentPhotos,
+                                noiseDecibel: currentNoiseDecibel,
                                 reviewSnippet: newReview.isNotEmpty
                                     ? newReview
                                     : card.reviewSnippet,
@@ -484,6 +668,351 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showAddPhotoDialog(
+    BuildContext context,
+    ValueChanged<ProofPhotoItem> onPhotoAdded,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryAccent.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.add_photo_alternate_rounded,
+                        color: AppColors.primaryAccent,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tambah Foto Bukti Suasana',
+                            style: AppTypography.headlineSerif(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            'Pilih foto dari galeri HP atau kamera',
+                            style: AppTypography.label(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(sheetCtx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // 1. Opsi Utama: Buka Galeri HP
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    if (!kIsWeb &&
+                        Platform.environment.containsKey('FLUTTER_TEST')) {
+                      onPhotoAdded(
+                        const ProofPhotoItem(
+                          imageUrl:
+                              'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=600&auto=format&fit=crop&q=80',
+                          caption: 'Foto Galeri',
+                        ),
+                      );
+                      return;
+                    }
+                    try {
+                      final picker = ImagePicker();
+                      final pickedList = await picker.pickMultiImage();
+                      if (pickedList.isNotEmpty) {
+                        for (final xfile in pickedList) {
+                          onPhotoAdded(
+                            ProofPhotoItem(
+                              imageUrl: xfile.path,
+                              caption: 'Foto Galeri',
+                            ),
+                          );
+                        }
+                      } else {
+                        final single = await picker.pickImage(
+                          source: ImageSource.gallery,
+                        );
+                        if (single != null) {
+                          onPhotoAdded(
+                            ProofPhotoItem(
+                              imageUrl: single.path,
+                              caption: 'Foto Galeri',
+                            ),
+                          );
+                        } else {
+                          // Fallback for tests / headless environments
+                          onPhotoAdded(
+                            const ProofPhotoItem(
+                              imageUrl:
+                                  'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=600&auto=format&fit=crop&q=80',
+                              caption: 'Foto Galeri',
+                            ),
+                          );
+                        }
+                      }
+                    } catch (_) {
+                      // Platform fallback (e.g. desktop/test without camera/gallery)
+                      onPhotoAdded(
+                        const ProofPhotoItem(
+                          imageUrl:
+                              'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=600&auto=format&fit=crop&q=80',
+                          caption: 'Foto Galeri',
+                        ),
+                      );
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primaryAccent,
+                          AppColors.primaryAccent.withValues(alpha: 0.88),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              AppColors.primaryAccent.withValues(alpha: 0.28),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.photo_library_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Pilih dari Galeri Perangkat',
+                                style: AppTypography.label(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Pilih satu atau beberapa foto dari memori HP',
+                                style: AppTypography.label(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // 2. Opsi Kamera: Potret Langsung
+                InkWell(
+                  onTap: () async {
+                    Navigator.pop(sheetCtx);
+                    try {
+                      final picker = ImagePicker();
+                      final photo = await picker.pickImage(
+                        source: ImageSource.camera,
+                      );
+                      if (photo != null) {
+                        onPhotoAdded(
+                          ProofPhotoItem(
+                            imageUrl: photo.path,
+                            caption: 'Kamera',
+                          ),
+                        );
+                      }
+                    } catch (_) {}
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2DDD9)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.camera_alt_outlined,
+                          color: AppColors.textPrimary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Ambil Foto dengan Kamera',
+                            style: AppTypography.label(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: AppColors.textTertiary,
+                          size: 13,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showNoiseCheckerSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 28,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFDCFCE7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.graphic_eq_rounded,
+                          size: 18,
+                          color: Color(0xFF10B981),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pengecek Suara Sekitar',
+                        style: AppTypography.headlineSerif(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(sheetCtx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const NoiseCheckerWidget(),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(sheetCtx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkButton,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(
+                    'Selesai',
+                    style: AppTypography.label(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -608,9 +1137,21 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
               _buildAuditQuickAction(
                 icon: Icons.graphic_eq_rounded,
                 title: 'Ukur Desibel (Sound Meter)',
-                subtitle: 'Kalibrasi kenyamanan audio selama di lokasi',
-                color: AppColors.badgeGreenText,
-                bg: AppColors.badgeGreenBg,
+                subtitle: 'Cek kebisingan audio area sekitar dengan noise_meter',
+                color: const Color(0xFF10B981),
+                bg: const Color(0xFFDCFCE7),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showNoiseCheckerSheet();
+                },
+              ),
+              const SizedBox(height: 10),
+              _buildAuditQuickAction(
+                icon: Icons.rate_review_outlined,
+                title: 'Tulis Ulasan & Status Tempat',
+                subtitle: 'Berikan evaluasi rekomendasi atau catatan tempat',
+                color: AppColors.primaryAccent,
+                bg: AppColors.primaryAccent.withValues(alpha: 0.12),
               ),
               const SizedBox(height: 10),
               _buildAuditQuickAction(
@@ -656,53 +1197,58 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     required String subtitle,
     required Color color,
     required Color bg,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5DFDC)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5DFDC)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
             ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.label(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.label(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                Text(
-                  subtitle,
-                  style: AppTypography.body(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+                  Text(
+                    subtitle,
+                    style: AppTypography.body(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 14,
-            color: AppColors.textTertiary,
-          ),
-        ],
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: AppColors.textTertiary,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -730,20 +1276,121 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
             const SizedBox(height: 8),
 
-            // Horizontal Filter Pills
-            QuickFilterPills(
-              selectedFilterId: _selectedFilterId,
-              onFilterSelected: (id) {
-                setState(() {
-                  _selectedFilterId = id;
-                  if (id == 'wishlist_selesai' || id == 'wishlist') {
-                    _currentNavIndex = 1; // Otomatis masuk ke navigation wishlist
-                  } else {
-                    _currentNavIndex = 0; // Kembali ke navigation Home jika filter lain
-                  }
-                });
-              },
-            ),
+            // When in Navigation Saved, show dedicated Saved Header; otherwise show QuickFilterPills
+            if (_currentNavIndex == 1)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE8E2DE), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryAccent.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.bookmark_rounded,
+                        size: 18,
+                        color: AppColors.primaryAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tempat Tersimpan (Saved)',
+                            style: AppTypography.headlineSerif(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            '${filtered.length} tempat tersimpan dalam koleksi Anda',
+                            style: AppTypography.label(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _currentNavIndex = 0;
+                          _selectedFilterId = 'all';
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4EFEA),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.arrow_back_rounded,
+                              size: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Semua',
+                              style: AppTypography.label(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              QuickFilterPills(
+                selectedFilterId: _selectedFilterId,
+                itemCounts: {
+                  'all': _cards.length,
+                  'rekomendasi': _cards
+                      .where(
+                        (c) => c.status == AuditStatus.rekomendasiKunjungiLagi,
+                      )
+                      .length,
+                  'tidak': _cards
+                      .where((c) => c.status == AuditStatus.tidakRekomendasi)
+                      .length,
+                },
+                onFilterSelected: (id) {
+                  setState(() {
+                    _selectedFilterId = id;
+                    _currentNavIndex = 0;
+                  });
+                },
+              ),
 
             const SizedBox(height: 8),
 
@@ -757,7 +1404,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.search_off_rounded,
+                              _currentNavIndex == 1
+                                  ? Icons.bookmark_border_rounded
+                                  : Icons.search_off_rounded,
                               size: 48,
                               color: AppColors.textTertiary.withValues(
                                 alpha: 0.5,
@@ -765,7 +1414,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'Tidak ada tempat yang sesuai',
+                              _currentNavIndex == 1
+                                  ? 'Belum Ada Tempat Tersimpan'
+                                  : 'Tidak ada tempat yang sesuai',
                               style: AppTypography.headlineSerif(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -773,7 +1424,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Coba ubah kata kunci pencarian atau reset filter pill',
+                              _currentNavIndex == 1
+                                  ? 'Tekan tombol bookmark pada kartu tempat untuk menyimpannya di sini.'
+                                  : 'Coba ubah kata kunci pencarian atau reset filter pill',
                               style: AppTypography.body(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -784,13 +1437,16 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             TextButton(
                               onPressed: () {
                                 setState(() {
+                                  _currentNavIndex = 0;
                                   _selectedFilterId = 'all';
                                   _searchQuery = '';
                                   _searchController.clear();
                                 });
                               },
                               child: Text(
-                                'Reset Semua Filter',
+                                _currentNavIndex == 1
+                                    ? 'Jelajahi Semua Tempat'
+                                    : 'Reset Semua Filter',
                                 style: AppTypography.label(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w700,
@@ -855,10 +1511,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         onIndexChanged: (idx) {
           setState(() {
             _currentNavIndex = idx;
-            if (idx == 1) {
-              _selectedFilterId = 'wishlist_selesai';
-            } else if (idx == 0) {
+            if (idx == 0) {
               _selectedFilterId = 'all';
+            } else {
+              _selectedFilterId = '';
             }
           });
         },

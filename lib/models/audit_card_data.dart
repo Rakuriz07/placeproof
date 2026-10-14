@@ -20,14 +20,12 @@ class AuditCardData {
   final String categoryDistance;
   final AuditStatus status;
   final String statusLabel;
-  final int decibel;
-  final String decibelDescription;
   final List<ProofPhotoItem> photos;
   final String reviewSnippet;
   final String auditDate;
   final String auditorHandle;
   final bool isBookmarked;
-  final bool isVisitedByMe;
+  final double? noiseDecibel;
 
   const AuditCardData({
     required this.id,
@@ -35,14 +33,12 @@ class AuditCardData {
     required this.categoryDistance,
     required this.status,
     required this.statusLabel,
-    required this.decibel,
-    required this.decibelDescription,
     this.photos = const [],
     required this.reviewSnippet,
     required this.auditDate,
     required this.auditorHandle,
     this.isBookmarked = false,
-    this.isVisitedByMe = true,
+    this.noiseDecibel,
   });
 
   AuditCardData copyWith({
@@ -50,14 +46,12 @@ class AuditCardData {
     String? categoryDistance,
     AuditStatus? status,
     String? statusLabel,
-    int? decibel,
-    String? decibelDescription,
     List<ProofPhotoItem>? photos,
     String? reviewSnippet,
     String? auditDate,
     String? auditorHandle,
     bool? isBookmarked,
-    bool? isVisitedByMe,
+    double? noiseDecibel,
   }) {
     return AuditCardData(
       id: id,
@@ -65,14 +59,12 @@ class AuditCardData {
       categoryDistance: categoryDistance ?? this.categoryDistance,
       status: status ?? this.status,
       statusLabel: statusLabel ?? this.statusLabel,
-      decibel: decibel ?? this.decibel,
-      decibelDescription: decibelDescription ?? this.decibelDescription,
       photos: photos ?? this.photos,
       reviewSnippet: reviewSnippet ?? this.reviewSnippet,
       auditDate: auditDate ?? this.auditDate,
       auditorHandle: auditorHandle ?? this.auditorHandle,
       isBookmarked: isBookmarked ?? this.isBookmarked,
-      isVisitedByMe: isVisitedByMe ?? this.isVisitedByMe,
+      noiseDecibel: noiseDecibel ?? this.noiseDecibel,
     );
   }
 }

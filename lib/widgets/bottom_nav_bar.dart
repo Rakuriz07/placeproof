@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 class PlaceProofBottomNav extends StatelessWidget {
@@ -19,10 +20,7 @@ class PlaceProofBottomNav extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         border: const Border(
-          top: BorderSide(
-            color: Color(0xFFEFE8E4),
-            width: 1,
-          ),
+          top: BorderSide(color: Color(0xFFEFE8E4), width: 1),
         ),
         boxShadow: [
           BoxShadow(
@@ -52,7 +50,7 @@ class PlaceProofBottomNav extends StatelessWidget {
                 index: 1,
                 icon: Icons.bookmark_border_rounded,
                 activeIcon: Icons.bookmark_rounded,
-                label: 'Wishlist',
+                label: 'Saved',
               ),
 
               // 3. Center FAB (+)
@@ -65,10 +63,7 @@ class PlaceProofBottomNav extends StatelessWidget {
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFEA5E45),
-                        Color(0xFFD6442B),
-                      ],
+                      colors: [Color(0xFFEA5E45), Color(0xFFD6442B)],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
@@ -128,11 +123,7 @@ class PlaceProofBottomNav extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isActive ? activeIcon : icon,
-              size: 22,
-              color: color,
-            ),
+            Icon(isActive ? activeIcon : icon, size: 22, color: color),
             const SizedBox(height: 3),
             Text(
               label,

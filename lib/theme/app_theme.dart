@@ -31,24 +31,6 @@ class AppColors {
   static const Color badgeOrangeText = Color(0xFFC2410C);
   static const Color orangeDot = Color(0xFFF97316);
 
-  // Legacy / Acoustic Level indicators
-  static const Color cardGreenBg = cardBlueBg;
-  static const Color cardGreenBorder = cardBlueBorder;
-  static const Color badgeGreenBg = Color(0xFFDCFCE7);
-  static const Color badgeGreenText = Color(0xFF15803D);
-  static const Color greenDot = Color(0xFF16A34A);
-
-  static const Color cardAmberBg = cardPinkBg;
-  static const Color cardAmberBorder = cardPinkBorder;
-  static const Color badgeAmberBg = Color(0xFFFEF3C7);
-  static const Color badgeAmberText = Color(0xFFB45309);
-  static const Color amberDot = Color(0xFFD97706);
-
-  static const Color cardRedBg = cardOrangeBg;
-  static const Color cardRedBorder = cardOrangeBorder;
-  static const Color badgeRedBg = Color(0xFFFFE4E6);
-  static const Color badgeRedText = Color(0xFFBE123C);
-  static const Color redDot = Color(0xFFE11D48);
 
   // Neutral items
   static const Color chipBackground = Color(0xFFFFFFFF);

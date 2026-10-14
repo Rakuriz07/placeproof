@@ -8,19 +8,20 @@ class MockFeedData {
       categoryDistance: 'Specialty Coffee & Co-working • 1.2 km (Menteng)',
       status: AuditStatus.rekomendasiKunjungiLagi,
       statusLabel: 'Recomended',
-      decibel: 46,
-      decibelDescription: 'Sangat Tenang',
       photos: [
         ProofPhotoItem(
-          imageUrl: 'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=600&auto=format&fit=crop&q=80',
+          imageUrl:
+              'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?w=600&auto=format&fit=crop&q=80',
           caption: 'Sudut Meja',
         ),
         ProofPhotoItem(
-          imageUrl: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&auto=format&fit=crop&q=80',
+          imageUrl:
+              'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&auto=format&fit=crop&q=80',
           caption: 'Suasana Tenang',
         ),
         ProofPhotoItem(
-          imageUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&auto=format&fit=crop&q=80',
+          imageUrl:
+              'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&auto=format&fit=crop&q=80',
           caption: 'Kopi & Hidangan',
         ),
       ],
@@ -29,7 +30,7 @@ class MockFeedData {
       auditDate: '14 Des 2024',
       auditorHandle: '@dimasradit',
       isBookmarked: false,
-      isVisitedByMe: true,
+      noiseDecibel: 48.0,
     ),
     const AuditCardData(
       id: 'card-2',
@@ -37,15 +38,15 @@ class MockFeedData {
       categoryDistance: 'Cafe & Eatery • 3.4 km (Senopati)',
       status: AuditStatus.wishlistSetelahKunjungan,
       statusLabel: 'Wishlist',
-      decibel: 68,
-      decibelDescription: 'Sedang • Jam Makan Siang',
       photos: [
         ProofPhotoItem(
-          imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&auto=format&fit=crop&q=80',
+          imageUrl:
+              'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&auto=format&fit=crop&q=80',
           caption: 'Area Utama',
         ),
         ProofPhotoItem(
-          imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80',
+          imageUrl:
+              'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80',
           caption: 'Kopi & Pastry',
         ),
       ],
@@ -53,8 +54,8 @@ class MockFeedData {
           'Kopi dan makanannya juara 10/10, tapi musik trap beat agak kencang saat jam makan siang. Masuk daftar wishlist untuk dikunjungi kembali saat jam santai.',
       auditDate: '11 Des 2024',
       auditorHandle: '@rendi_craft',
-      isBookmarked: false,
-      isVisitedByMe: true,
+      isBookmarked: true,
+      noiseDecibel: 56.0,
     ),
     const AuditCardData(
       id: 'card-3',
@@ -62,15 +63,13 @@ class MockFeedData {
       categoryDistance: 'Bistro & Coffee • 2.1 km',
       status: AuditStatus.tidakRekomendasi,
       statusLabel: 'Tidak Rekomendasi',
-      decibel: 79,
-      decibelDescription: 'Bising • Loud Echo',
       photos: [],
       reviewSnippet:
           'Echo ruangan parah, musik kencang, tidak ramah sensory overload dan meja goyang.',
       auditDate: '08 Des 2024',
       auditorHandle: '@naomi_wfc',
       isBookmarked: false,
-      isVisitedByMe: true,
+      noiseDecibel: 78.0,
     ),
   ];
 }

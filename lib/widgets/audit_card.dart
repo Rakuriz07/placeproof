@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_layout_grid/flutter_layout_grid.dart';
 import '../models/audit_card_data.dart';
@@ -193,6 +194,12 @@ class AuditCardWidget extends StatelessWidget {
             ),
           ),
 
+          // Hasil Noise Meter di kontainer kartu tempat (misal 56 dB)
+          if (data.noiseDecibel != null) ...[
+            const SizedBox(height: 10),
+            _buildNoiseResultContainer(data.noiseDecibel!),
+          ],
+
           const SizedBox(height: 14),
 
           // 4. Clean Review / Personal Notes Card
@@ -202,6 +209,89 @@ class AuditCardWidget extends StatelessWidget {
 
           // 5. Action Bar (Petunjuk Arah, Bookmark, Edit Kunjungan)
           _buildActionBar(),
+        ],
+      ),
+    );
+  }
+
+  String _getSoundCategoryLabel(double db) {
+    if (db <= 50) return 'Sangat Tenang (Fokus)';
+    if (db <= 65) return 'Tenang (Santai)';
+    if (db <= 75) return 'Sedang (Percakapan)';
+    return 'Bising (Ramai)';
+  }
+
+  Color _getSoundColor(double db) {
+    if (db <= 50) return const Color(0xFF10B981);
+    if (db <= 65) return const Color(0xFF2563EB);
+    if (db <= 75) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  Widget _buildNoiseResultContainer(double db) {
+    final color = _getSoundColor(db);
+    final label = _getSoundCategoryLabel(db);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(
+          color: color.withValues(alpha: 0.28),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.graphic_eq_rounded,
+              size: 15,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${db.toStringAsFixed(0)} dB',
+            style: AppTypography.headlineSerif(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '•  $label',
+              style: AppTypography.label(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Ambient Level Mini Bar
+          SizedBox(
+            width: 44,
+            height: 5,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: ((db - 30) / 70).clamp(0.08, 1.0),
+                backgroundColor: color.withValues(alpha: 0.16),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -299,38 +389,56 @@ class AuditCardWidget extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            photo.imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: const Color(0xFFDDD5CE),
-                child: Center(
-                  child: Icon(
-                    Icons.coffee_rounded,
-                    size: isHero ? 32 : 22,
-                    color: AppColors.textSecondary.withValues(alpha: 0.5),
-                  ),
+          photo.imageUrl.startsWith('http://') ||
+                  photo.imageUrl.startsWith('https://')
+              ? Image.network(
+                  photo.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: const Color(0xFFDDD5CE),
+                      child: Center(
+                        child: Icon(
+                          Icons.coffee_rounded,
+                          size: isHero ? 32 : 22,
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      color: const Color(0xFFEEE8E3),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryAccent,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : Image.file(
+                  File(photo.imageUrl),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: const Color(0xFFDDD5CE),
+                      child: Center(
+                        child: Icon(
+                          Icons.image_rounded,
+                          size: isHero ? 32 : 22,
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return Container(
-                color: const Color(0xFFEEE8E3),
-                child: const Center(
-                  child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primaryAccent,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
           // Gradient shadow overlay at the bottom for caption readability
           Positioned(
             left: 0,
@@ -472,48 +580,51 @@ class AuditCardWidget extends StatelessWidget {
         const SizedBox(width: 8),
 
         // 2. Bookmark Button (Center)
-        InkWell(
-          onTap: onBookmarkTap,
-          borderRadius: BorderRadius.circular(22),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 48,
-            height: 44,
-            decoration: BoxDecoration(
-              color: data.isBookmarked
-                  ? AppColors.badgePinkBg
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
+        Tooltip(
+          message: data.isBookmarked ? 'Tersimpan (Saved)' : 'Simpan Tempat',
+          child: InkWell(
+            onTap: onBookmarkTap,
+            borderRadius: BorderRadius.circular(22),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 48,
+              height: 44,
+              decoration: BoxDecoration(
                 color: data.isBookmarked
-                    ? AppColors.cardPinkBorder
-                    : const Color(0xFFE2DDD9),
-                width: 1.2,
+                    ? const Color(0xFFFDF2F0)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: data.isBookmarked
+                      ? const Color(0xFFF8CDC6)
+                      : const Color(0xFFE2DDD9),
+                  width: 1.2,
+                ),
+                boxShadow: data.isBookmarked
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primaryAccent.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
               ),
-              boxShadow: data.isBookmarked
-                  ? [
-                      BoxShadow(
-                        color: AppColors.pinkDot.withValues(alpha: 0.22),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-            ),
-            child: Icon(
-              data.isBookmarked
-                  ? Icons.bookmark_rounded
-                  : Icons.bookmark_border_rounded,
-              size: 20,
-              color: data.isBookmarked
-                  ? AppColors.pinkDot
-                  : AppColors.textPrimary,
+              child: Icon(
+                data.isBookmarked
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_border_rounded,
+                size: 20,
+                color: data.isBookmarked
+                    ? AppColors.primaryAccent
+                    : AppColors.textPrimary,
+              ),
             ),
           ),
         ),
