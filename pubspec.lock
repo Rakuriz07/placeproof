@@ -166,6 +166,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  flutter_liquid_glasses:
+    dependency: "direct main"
+    description:
+      name: flutter_liquid_glasses
+      sha256: b279db528c496cac4327e886e27e4f3afacdf47a1094ab9162e51c1b5b465092
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.3"
   flutter_localizations:
     dependency: transitive
     description: flutter
